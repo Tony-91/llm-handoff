@@ -1,0 +1,17 @@
+# Java / Maven
+backend/target/
+*.class
+
+# Node.js
+frontend/node_modules/
+frontend/dist/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Editor and OS files
+.DS_Store
+.idea/
+.vscode/
