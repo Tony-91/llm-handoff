@@ -1,14 +1,11 @@
-CREATE TABLE conversations (
+CREATE TABLE manifests (
     id BINARY(16) PRIMARY KEY,
     project_id BINARY(16) NOT NULL,
-    content TEXT NOT NULL,
-    title VARCHAR(200),
-    processing_status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
-    processing_error VARCHAR(1000),
-    source VARCHAR(50),
+    schema_version VARCHAR(30),
+    raw_content MEDIUMTEXT NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
 );
 
-CREATE INDEX idx_conversations_project_id ON conversations(project_id);
+CREATE INDEX idx_manifests_project_id ON manifests(project_id);

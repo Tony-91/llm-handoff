@@ -21,11 +21,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
 
-    @ExceptionHandler(ConversationNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleConversationNotFound(ConversationNotFoundException ex) {
+    @ExceptionHandler(ManifestNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleManifestNotFound(ManifestNotFoundException ex) {
         ErrorResponse error = new ErrorResponse(
                 ex.getMessage(),
-                "The requested conversation could not be found"
+                "The requested manifest could not be found"
         );
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
