@@ -55,6 +55,15 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 
+    @ExceptionHandler(com.llmhandoff.gitsync.GitSyncException.class)
+    public ResponseEntity<ErrorResponse> handleGitSyncException(com.llmhandoff.gitsync.GitSyncException ex) {
+        ErrorResponse error = new ErrorResponse(
+                ex.getMessage(),
+                "Git repository synchronization failed"
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
         ErrorResponse error = new ErrorResponse(

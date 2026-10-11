@@ -210,6 +210,30 @@ button:disabled {
   border: 1px solid #e2e8f0 !important;
 }
 
+.status-git-synced {
+  background: #e0f2fe !important;
+  color: #0369a1 !important;
+  border: 1px solid #7dd3fc !important;
+}
+
+.status-git-active {
+  background: #ecfdf5 !important;
+  color: #047857 !important;
+  border: 1px solid #a7f3d0 !important;
+}
+
+.status-git-pending {
+  background: #ecfdf5 !important;
+  color: #047857 !important;
+  border: 1px solid #a7f3d0 !important;
+}
+
+.status-git-failed {
+  background: #fee2e2 !important;
+  color: #b91c1c !important;
+  border: 1px solid #fca5a5 !important;
+}
+
 .toggle-btn {
   background: transparent;
   color: #2563eb;
@@ -249,6 +273,201 @@ button:disabled {
 
 .copy-handoff-btn.copy-success {
   background: #16a34a;
+}
+
+.sync-git-btn {
+  background: #0284c7;
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.sync-git-btn:hover:not(:disabled) {
+  background: #0369a1;
+}
+
+.generate-manifest-btn {
+  background: #475569;
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.generate-manifest-btn:hover:not(:disabled) {
+  background: #334155;
+}
+
+.generate-manifest-btn:disabled {
+  background: #cbd5e1 !important;
+  color: #64748b !important;
+  cursor: not-allowed !important;
+  border-color: #cbd5e1 !important;
+  opacity: 0.85;
+}
+
+.generate-manifest-btn.btn-draft-generated {
+  background: #cbd5e1 !important;
+  color: #475569 !important;
+}
+
+.generate-manifest-btn.btn-success {
+  background: #16a34a;
+}
+
+.preview-highlights-card {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.preview-highlights-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.preview-highlights-header h5 {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #1e293b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.preview-pill-badge {
+  background: #e0e7ff;
+  color: #3730a3;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+.preview-pill-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.highlight-pill {
+  display: inline-flex;
+  flex-direction: column;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.highlight-pill .pill-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  opacity: 0.85;
+}
+
+.highlight-pill .pill-val {
+  font-weight: 600;
+  margin-top: 1px;
+}
+
+.pill-blue { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
+.pill-purple { background: #f3e8ff; color: #6b21a8; border: 1px solid #e9d5ff; }
+.pill-green { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+.pill-orange { background: #ffedd5; color: #9a3412; border: 1px solid #fed7aa; }
+.pill-gray { background: #f1f5f9; color: #334155; border: 1px solid #e2e8f0; }
+
+.preview-note {
+  font-size: 12.5px;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+.git-config-section {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.git-config-section h4 {
+  font-size: 15px;
+  margin-bottom: 12px;
+  color: #1e293b;
+}
+
+.git-config-grid {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.git-input-group {
+  flex: 2;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.git-input-group.small {
+  flex: 1;
+  min-width: 90px;
+}
+
+.git-input-group label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.git-input-group input {
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 13.5px;
+}
+
+.git-input-group input:focus {
+  outline: none;
+  border-color: #0284c7;
+  box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.15);
+}
+
+.save-git-btn {
+  background: #334155;
+  color: white;
+  padding: 8px 14px;
+  font-size: 13.5px;
+  height: 38px;
+  font-weight: 600;
+}
+
+.save-git-btn:hover:not(:disabled) {
+  background: #1e293b;
+}
+
+.git-status-meta {
+  margin-top: 10px;
+  font-size: 12.5px;
+  color: #64748b;
+}
+
+.git-error-text {
+  color: #dc2626;
+  margin-top: 4px;
+  font-size: 12px;
 }
 
 .manifest-uploader-section {

@@ -28,6 +28,21 @@ public class Project {
     @Column(length = 2_000)
     private String description;
 
+    @Column(name = "repo_identifier", length = 255)
+    private String repoIdentifier;
+
+    @Column(name = "default_branch", length = 100, nullable = false)
+    private String defaultBranch = "main";
+
+    @Column(name = "git_sync_status", length = 30, nullable = false)
+    private String gitSyncStatus = "NOT_CONFIGURED";
+
+    @Column(name = "git_sync_error", length = 1000)
+    private String gitSyncError;
+
+    @Column(name = "last_synced_at")
+    private Instant lastSyncedAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -73,5 +88,45 @@ public class Project {
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+
+    public String getRepoIdentifier() {
+        return repoIdentifier;
+    }
+
+    public void setRepoIdentifier(String repoIdentifier) {
+        this.repoIdentifier = repoIdentifier;
+    }
+
+    public String getDefaultBranch() {
+        return defaultBranch;
+    }
+
+    public void setDefaultBranch(String defaultBranch) {
+        this.defaultBranch = defaultBranch != null && !defaultBranch.isBlank() ? defaultBranch : "main";
+    }
+
+    public String getGitSyncStatus() {
+        return gitSyncStatus;
+    }
+
+    public void setGitSyncStatus(String gitSyncStatus) {
+        this.gitSyncStatus = gitSyncStatus;
+    }
+
+    public String getGitSyncError() {
+        return gitSyncError;
+    }
+
+    public void setGitSyncError(String gitSyncError) {
+        this.gitSyncError = gitSyncError;
+    }
+
+    public Instant getLastSyncedAt() {
+        return lastSyncedAt;
+    }
+
+    public void setLastSyncedAt(Instant lastSyncedAt) {
+        this.lastSyncedAt = lastSyncedAt;
     }
 }

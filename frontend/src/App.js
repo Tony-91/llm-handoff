@@ -198,8 +198,8 @@ function App() {
         [projectId]: {
           ...prev[projectId],
           manifest: savedData,
-          saving: false,
-          showEditor: false
+          hasDraft: false,
+          saving: false
         }
       }));
     } catch (err) {
@@ -208,6 +208,172 @@ function App() {
         [projectId]: {
           ...prev[projectId],
           saving: false,
+          errorMessage: err.message
+        }
+      }));
+    }
+  };
+
+  const handleUpdateGitConfig = async (projectId) => {
+    const state = projectState[projectId] || {};
+    const repoIdentifier = state.repoIdentifierInput ?? '';
+    const defaultBranch = state.branchInput ?? 'main';
+
+    setProjectState((prev) => ({
+      ...prev,
+      [projectId]: { ...prev[projectId], savingGit: true, errorMessage: null }
+    }));
+
+    try {
+      const response = await fetch(`${API_BASE}/projects/${projectId}/git-config`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          repoIdentifier: repoIdentifier.trim(),
+          defaultBranch: defaultBranch.trim()
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update Git configuration');
+      }
+
+      const updatedProject = await response.json();
+      setProjects((prev) => prev.map((p) => (p.id === projectId ? updatedProject : p)));
+
+      setProjectState((prev) => ({
+        ...prev,
+        [projectId]: {
+          ...prev[projectId],
+          savingGit: false,
+          gitConfigSuccess: true
+        }
+      }));
+
+      setTimeout(() => {
+        setProjectState((prev) => ({
+          ...prev,
+          [projectId]: { ...prev[projectId], gitConfigSuccess: false }
+        }));
+      }, 3000);
+    } catch (err) {
+      setProjectState((prev) => ({
+        ...prev,
+        [projectId]: {
+          ...prev[projectId],
+          savingGit: false,
+          errorMessage: err.message
+        }
+      }));
+    }
+  };
+
+  const handleSyncGit = async (projectId) => {
+    setProjectState((prev) => ({
+      ...prev,
+      [projectId]: { ...prev[projectId], syncingGit: true, errorMessage: null }
+    }));
+
+    try {
+      const response = await fetch(`${API_BASE}/projects/${projectId}/sync-git`, {
+        method: 'POST'
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to sync manifest from GitHub');
+      }
+
+      const savedManifest = await response.json();
+      setProjectState((prev) => ({
+        ...prev,
+        [projectId]: {
+          ...prev[projectId],
+          manifest: savedManifest,
+          rawInput: savedManifest.rawContent || JSON.stringify(savedManifest.parsedData, null, 2),
+          isJsonValid: true,
+          hasDraft: false,
+          syncingGit: false,
+          gitSyncSuccess: true
+        }
+      }));
+
+      // Refresh project list to update git_sync_status and timestamps
+      fetchProjects(true);
+
+      setTimeout(() => {
+        setProjectState((prev) => ({
+          ...prev,
+          [projectId]: { ...prev[projectId], gitSyncSuccess: false }
+        }));
+      }, 3000);
+    } catch (err) {
+      setProjectState((prev) => ({
+        ...prev,
+        [projectId]: {
+          ...prev[projectId],
+          syncingGit: false,
+          errorMessage: err.message
+        }
+      }));
+      fetchProjects(true);
+    }
+  };
+
+  const handleGenerateManifest = async (projectId) => {
+    setProjectState((prev) => ({
+      ...prev,
+      [projectId]: { ...prev[projectId], generatingManifest: true, errorMessage: null }
+    }));
+
+    try {
+      const current = projectState[projectId] || {};
+      const project = projects.find((p) => p.id === projectId);
+      const repoIdentifier = current.repoIdentifierInput !== undefined ? current.repoIdentifierInput : (project?.repoIdentifier || '');
+      const defaultBranch = current.branchInput !== undefined ? current.branchInput : (project?.defaultBranch || 'main');
+
+      const response = await fetch(`${API_BASE}/projects/${projectId}/generate-manifest`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          repoIdentifier: repoIdentifier.trim(),
+          defaultBranch: defaultBranch.trim()
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to auto-generate manifest from repository');
+      }
+
+      const generated = await response.json();
+      setProjectState((prev) => ({
+        ...prev,
+        [projectId]: {
+          ...prev[projectId],
+          rawInput: generated.rawJson,
+          isJsonValid: true,
+          generatingManifest: false,
+          hasDraft: true,
+          generateSuccess: true,
+          generatedHighlights: generated.summaryHighlights,
+          detectedFiles: generated.detectedFiles
+        }
+      }));
+
+      setTimeout(() => {
+        setProjectState((prev) => ({
+          ...prev,
+          [projectId]: { ...prev[projectId], generateSuccess: false }
+        }));
+      }, 4000);
+    } catch (err) {
+      setProjectState((prev) => ({
+        ...prev,
+        [projectId]: {
+          ...prev[projectId],
+          generatingManifest: false,
           errorMessage: err.message
         }
       }));
@@ -295,6 +461,11 @@ function App() {
                         <p>{project.description || 'No description provided'}</p>
                       </div>
                       <div className="project-header-actions">
+                        {project.repoIdentifier && (
+                          <span className={`status-pill ${project.gitSyncStatus === 'SYNCED' ? 'status-git-synced' : project.gitSyncStatus === 'FAILED' ? 'status-git-failed' : 'status-git-active'}`}>
+                            {project.gitSyncStatus === 'SYNCED' ? 'Git Synced' : project.gitSyncStatus === 'FAILED' ? 'Git Sync Error' : 'Git Active'}
+                          </span>
+                        )}
                         <span className={`status-pill ${manifest ? 'status-active' : 'status-empty'}`}>
                           {manifest ? 'Manifest Active' : 'No Manifest'}
                         </span>
@@ -321,6 +492,86 @@ function App() {
                           >
                             {state.copySuccess ? 'Copied to Clipboard!' : 'Copy Handoff Package'}
                           </button>
+
+                          {(project.repoIdentifier || state.repoIdentifierInput) && (
+                            <button
+                              type="button"
+                              className={`generate-manifest-btn ${state.hasDraft ? 'btn-draft-generated' : ''}`}
+                              onClick={() => handleGenerateManifest(project.id)}
+                              disabled={state.generatingManifest || state.hasDraft}
+                            >
+                              {state.generatingManifest ? 'Inspecting Repo...' : state.hasDraft ? 'Draft Generated' : 'Auto-Generate Manifest from Repo'}
+                            </button>
+                          )}
+
+                          {project.repoIdentifier && (
+                            <button
+                              type="button"
+                              className="sync-git-btn"
+                              onClick={() => handleSyncGit(project.id)}
+                              disabled={state.syncingGit}
+                            >
+                              {state.syncingGit ? 'Syncing...' : state.gitSyncSuccess ? 'Synced from Git!' : 'Sync from GitHub'}
+                            </button>
+                          )}
+                        </div>
+
+                        {/* GitHub Repo Integration Section */}
+                        <div className="git-config-section">
+                          <h4>GitHub Repository Sync</h4>
+                          <div className="git-config-grid">
+                            <div className="git-input-group">
+                              <label>Repository (owner/repo or GitHub URL)</label>
+                              <input
+                                type="text"
+                                placeholder="e.g. facebook/react or https://github.com/owner/repo"
+                                value={state.repoIdentifierInput !== undefined ? state.repoIdentifierInput : (project.repoIdentifier || '')}
+                                onChange={(e) => setProjectState((prev) => ({
+                                  ...prev,
+                                  [project.id]: {
+                                    ...prev[project.id],
+                                    repoIdentifierInput: e.target.value
+                                  }
+                                }))}
+                              />
+                            </div>
+                            <div className="git-input-group small">
+                              <label>Branch</label>
+                              <input
+                                type="text"
+                                placeholder="main"
+                                value={state.branchInput !== undefined ? state.branchInput : (project.defaultBranch || 'main')}
+                                onChange={(e) => setProjectState((prev) => ({
+                                  ...prev,
+                                  [project.id]: {
+                                    ...prev[project.id],
+                                    branchInput: e.target.value
+                                  }
+                                }))}
+                              />
+                            </div>
+                            <div className="git-action-group">
+                              <button
+                                type="button"
+                                className="save-git-btn"
+                                onClick={() => handleUpdateGitConfig(project.id)}
+                                disabled={state.savingGit}
+                              >
+                                {state.savingGit ? 'Saving...' : state.gitConfigSuccess ? 'Saved' : 'Save Git Config'}
+                              </button>
+                            </div>
+                          </div>
+                          {project.repoIdentifier && (
+                            <div className="git-status-meta">
+                              <span>Status: <strong>{project.gitSyncStatus === 'SYNCED' ? 'Synced' : project.gitSyncStatus === 'FAILED' ? 'Error' : 'Active'}</strong></span>
+                              {project.lastSyncedAt && (
+                                <span> • Last synced: {new Date(project.lastSyncedAt).toLocaleString()}</span>
+                              )}
+                              {project.gitSyncError && (
+                                <p className="git-error-text">Sync error: {project.gitSyncError}</p>
+                              )}
+                            </div>
+                          )}
                         </div>
 
                         {/* Structured Dashboard Cards */}
@@ -405,6 +656,49 @@ function App() {
                         {/* JSON Ingestion & Editor Section */}
                         <div className="manifest-uploader-section">
                           <h4>Upload or Edit <code>.llmhandoff.json</code></h4>
+
+                          {/* Option B: Field Previews / Pill Highlights */}
+                          {state.generatedHighlights && (
+                            <div className="preview-highlights-card">
+                              <div className="preview-highlights-header">
+                                <h5>Auto-Detected Configuration Fields</h5>
+                                <span className="preview-pill-badge">Draft Candidate</span>
+                              </div>
+                              <div className="preview-pill-group">
+                                {state.generatedHighlights.Language && (
+                                  <div className="highlight-pill pill-blue">
+                                    <span className="pill-title">Language</span>
+                                    <span className="pill-val">{state.generatedHighlights.Language}</span>
+                                  </div>
+                                )}
+                                {state.generatedHighlights.Framework && (
+                                  <div className="highlight-pill pill-purple">
+                                    <span className="pill-title">Framework</span>
+                                    <span className="pill-val">{state.generatedHighlights.Framework}</span>
+                                  </div>
+                                )}
+                                {state.generatedHighlights.Database && (
+                                  <div className="highlight-pill pill-green">
+                                    <span className="pill-title">Database</span>
+                                    <span className="pill-val">{state.generatedHighlights.Database}</span>
+                                  </div>
+                                )}
+                                {state.generatedHighlights['Build Tool'] && (
+                                  <div className="highlight-pill pill-orange">
+                                    <span className="pill-title">Build Tool</span>
+                                    <span className="pill-val">{state.generatedHighlights['Build Tool']}</span>
+                                  </div>
+                                )}
+                                {state.generatedHighlights['Detected Files'] && (
+                                  <div className="highlight-pill pill-gray">
+                                    <span className="pill-title">Detected Files</span>
+                                    <span className="pill-val">{state.generatedHighlights['Detected Files']}</span>
+                                  </div>
+                                )}
+                              </div>
+                              <p className="preview-note">Review or modify the candidate JSON below, then click "Save & Activate Manifest" to apply.</p>
+                            </div>
+                          )}
 
                           <div className="file-input-wrapper">
                             <label className="file-label">
