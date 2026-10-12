@@ -1,10 +1,12 @@
 package com.llmhandoff.project;
 
+import com.llmhandoff.auth.security.UserPrincipal;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,16 +25,21 @@ public class ProjectController {
     }
 
     @PostMapping
-    public ResponseEntity<ProjectResponse> createProject(@Valid @RequestBody CreateProjectRequest request) {
-        Project project = projectService.createProject(request);
+    public ResponseEntity<ProjectResponse> createProject(
+            @Valid @RequestBody CreateProjectRequest request,
+            @AuthenticationPrincipal UserPrincipal userPrincipal) {
+        UUID userId = userPrincipal != null ? userPrincipal.getId() : null;
+        Project project = projectService.createProject(request, userId);
         return ResponseEntity
                 .created(URI.create("/api/projects/" + project.getId()))
                 .body(ProjectResponse.from(project));
     }
 
     @GetMapping
-    public ResponseEntity<List<ProjectResponse>> getAllProjects() {
-        List<Project> projects = projectService.getAllProjects();
+    public ResponseEntity<List<ProjectResponse>> getAllProjects(
+            @AuthenticationPrincipal UserPrincipal userPrincipal) {
+        UUID userId = userPrincipal != null ? userPrincipal.getId() : null;
+        List<Project> projects = projectService.getProjectsForUser(userId);
         List<ProjectResponse> responses = projects.stream()
                 .map(ProjectResponse::from)
                 .toList();
@@ -40,8 +47,11 @@ public class ProjectController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ProjectResponse> getProjectById(@PathVariable UUID id) {
-        Project project = projectService.getProjectById(id);
+    public ResponseEntity<ProjectResponse> getProjectById(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserPrincipal userPrincipal) {
+        UUID userId = userPrincipal != null ? userPrincipal.getId() : null;
+        Project project = projectService.getProjectByIdAndUser(id, userId);
         return ResponseEntity.ok(ProjectResponse.from(project));
     }
 }

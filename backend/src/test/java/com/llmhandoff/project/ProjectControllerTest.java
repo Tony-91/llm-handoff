@@ -6,6 +6,7 @@ import com.llmhandoff.error.ProjectNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
@@ -16,12 +17,15 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(ProjectController.class)
+@AutoConfigureMockMvc(addFilters = false)
 @Import(GlobalExceptionHandler.class)
 class ProjectControllerTest {
 
@@ -47,7 +51,7 @@ class ProjectControllerTest {
     void createProject_returnsCreatedStatus() throws Exception {
         CreateProjectRequest request = new CreateProjectRequest("Test Project", "Test Description");
 
-        when(projectService.createProject(any(CreateProjectRequest.class))).thenReturn(project);
+        when(projectService.createProject(any(CreateProjectRequest.class), any())).thenReturn(project);
 
         mockMvc.perform(post("/api/projects")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -73,7 +77,7 @@ class ProjectControllerTest {
         Project p1 = new Project("Project 1", "Desc 1");
         Project p2 = new Project("Project 2", "Desc 2");
 
-        when(projectService.getAllProjects()).thenReturn(List.of(p1, p2));
+        when(projectService.getProjectsForUser(any())).thenReturn(List.of(p1, p2));
 
         mockMvc.perform(get("/api/projects"))
                 .andExpect(status().isOk())
@@ -84,7 +88,7 @@ class ProjectControllerTest {
 
     @Test
     void getProjectById_returnsProject() throws Exception {
-        when(projectService.getProjectById(projectId)).thenReturn(project);
+        when(projectService.getProjectByIdAndUser(eq(projectId), any())).thenReturn(project);
 
         mockMvc.perform(get("/api/projects/{id}", projectId))
                 .andExpect(status().isOk())
@@ -94,7 +98,7 @@ class ProjectControllerTest {
 
     @Test
     void getProjectById_whenNotFound_returnsNotFound() throws Exception {
-        when(projectService.getProjectById(projectId))
+        when(projectService.getProjectByIdAndUser(eq(projectId), any()))
                 .thenThrow(new ProjectNotFoundException("Project not found with id: " + projectId));
 
         mockMvc.perform(get("/api/projects/{id}", projectId))

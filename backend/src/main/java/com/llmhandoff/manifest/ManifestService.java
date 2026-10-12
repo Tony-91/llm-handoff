@@ -6,12 +6,11 @@ import com.llmhandoff.error.ManifestNotFoundException;
 import com.llmhandoff.error.ProjectNotFoundException;
 import com.llmhandoff.project.Project;
 import com.llmhandoff.project.ProjectRepository;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional
@@ -31,9 +30,8 @@ public class ManifestService {
         this.objectMapper = objectMapper;
     }
 
-    public ManifestResponse saveManifest(UUID projectId, SaveManifestRequest request) {
-        Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new ProjectNotFoundException("Project not found with id: " + projectId));
+    public ManifestResponse saveManifest(UUID projectId, SaveManifestRequest request, UUID userId) {
+        Project project = getProjectWithOwnershipCheck(projectId, userId);
 
         ManifestData manifestData = parseManifestData(request.content());
         String schemaVersion = manifestData.schemaVersion() != null ? manifestData.schemaVersion() : "1.0";
@@ -44,11 +42,13 @@ public class ManifestService {
         return ManifestResponse.from(saved, manifestData);
     }
 
+    public ManifestResponse saveManifest(UUID projectId, SaveManifestRequest request) {
+        return saveManifest(projectId, request, null);
+    }
+
     @Transactional(readOnly = true)
-    public ManifestResponse getLatestManifest(UUID projectId) {
-        if (!projectRepository.existsById(projectId)) {
-            throw new ProjectNotFoundException("Project not found with id: " + projectId);
-        }
+    public ManifestResponse getLatestManifest(UUID projectId, UUID userId) {
+        getProjectWithOwnershipCheck(projectId, userId);
 
         Manifest manifest = manifestRepository.findTopByProjectIdOrderByCreatedAtDesc(projectId)
                 .orElseThrow(() -> new ManifestNotFoundException("No manifest found for project: " + projectId));
@@ -58,9 +58,13 @@ public class ManifestService {
     }
 
     @Transactional(readOnly = true)
-    public HandoffPackageResponse generateHandoffPackage(UUID projectId) {
-        Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new ProjectNotFoundException("Project not found with id: " + projectId));
+    public ManifestResponse getLatestManifest(UUID projectId) {
+        return getLatestManifest(projectId, null);
+    }
+
+    @Transactional(readOnly = true)
+    public HandoffPackageResponse generateHandoffPackage(UUID projectId, UUID userId) {
+        Project project = getProjectWithOwnershipCheck(projectId, userId);
 
         Manifest manifest = manifestRepository.findTopByProjectIdOrderByCreatedAtDesc(projectId)
                 .orElseThrow(() -> new ManifestNotFoundException("No manifest found for project: " + projectId));
@@ -74,6 +78,20 @@ public class ManifestService {
                 markdown,
                 Instant.now()
         );
+    }
+
+    @Transactional(readOnly = true)
+    public HandoffPackageResponse generateHandoffPackage(UUID projectId) {
+        return generateHandoffPackage(projectId, null);
+    }
+
+    private Project getProjectWithOwnershipCheck(UUID projectId, UUID userId) {
+        if (userId != null) {
+            return projectRepository.findByIdAndUserId(projectId, userId)
+                    .orElseThrow(() -> new ProjectNotFoundException("Project not found with id: " + projectId));
+        }
+        return projectRepository.findById(projectId)
+                .orElseThrow(() -> new ProjectNotFoundException("Project not found with id: " + projectId));
     }
 
     private ManifestData parseManifestData(String rawContent) {

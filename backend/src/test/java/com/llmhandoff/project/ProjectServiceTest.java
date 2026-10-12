@@ -22,6 +22,9 @@ class ProjectServiceTest {
     @Mock
     private ProjectRepository projectRepository;
 
+    @Mock
+    private com.llmhandoff.user.UserRepository userRepository;
+
     @InjectMocks
     private ProjectService projectService;
 

@@ -8,6 +8,7 @@ import com.llmhandoff.project.Project;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
@@ -26,6 +27,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(ManifestController.class)
+@AutoConfigureMockMvc(addFilters = false)
 @Import(GlobalExceptionHandler.class)
 class ManifestControllerTest {
 
@@ -77,7 +79,7 @@ class ManifestControllerTest {
     void saveManifest_returnsCreatedStatus() throws Exception {
         SaveManifestRequest request = new SaveManifestRequest(validManifestJson);
 
-        when(manifestService.saveManifest(eq(projectId), any(SaveManifestRequest.class)))
+        when(manifestService.saveManifest(eq(projectId), any(SaveManifestRequest.class), any()))
                 .thenReturn(sampleResponse);
 
         mockMvc.perform(post("/api/projects/{projectId}/manifest", projectId)
@@ -103,7 +105,7 @@ class ManifestControllerTest {
     void saveManifest_whenProjectNotFound_returnsNotFound() throws Exception {
         SaveManifestRequest request = new SaveManifestRequest(validManifestJson);
 
-        when(manifestService.saveManifest(eq(projectId), any(SaveManifestRequest.class)))
+        when(manifestService.saveManifest(eq(projectId), any(SaveManifestRequest.class), any()))
                 .thenThrow(new ProjectNotFoundException("Project not found with id: " + projectId));
 
         mockMvc.perform(post("/api/projects/{projectId}/manifest", projectId)
@@ -115,7 +117,7 @@ class ManifestControllerTest {
 
     @Test
     void getLatestManifest_returnsOk() throws Exception {
-        when(manifestService.getLatestManifest(projectId)).thenReturn(sampleResponse);
+        when(manifestService.getLatestManifest(eq(projectId), any())).thenReturn(sampleResponse);
 
         mockMvc.perform(get("/api/projects/{projectId}/manifest", projectId))
                 .andExpect(status().isOk())
@@ -125,7 +127,7 @@ class ManifestControllerTest {
 
     @Test
     void getLatestManifest_whenNotFound_returnsNotFound() throws Exception {
-        when(manifestService.getLatestManifest(projectId))
+        when(manifestService.getLatestManifest(eq(projectId), any()))
                 .thenThrow(new ManifestNotFoundException("No manifest found for project: " + projectId));
 
         mockMvc.perform(get("/api/projects/{projectId}/manifest", projectId))
@@ -142,7 +144,7 @@ class ManifestControllerTest {
                 Instant.now()
         );
 
-        when(manifestService.generateHandoffPackage(projectId)).thenReturn(packageResponse);
+        when(manifestService.generateHandoffPackage(eq(projectId), any())).thenReturn(packageResponse);
 
         mockMvc.perform(get("/api/projects/{projectId}/handoff-package", projectId))
                 .andExpect(status().isOk())

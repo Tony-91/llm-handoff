@@ -1,10 +1,14 @@
 package com.llmhandoff.project;
 
+import com.llmhandoff.user.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -43,6 +47,10 @@ public class Project {
     @Column(name = "last_synced_at")
     private Instant lastSyncedAt;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -54,8 +62,13 @@ public class Project {
     }
 
     public Project(String name, String description) {
+        this(name, description, null);
+    }
+
+    public Project(String name, String description, User user) {
         this.name = name;
         this.description = description;
+        this.user = user;
     }
 
     @PrePersist
@@ -128,5 +141,13 @@ public class Project {
 
     public void setLastSyncedAt(Instant lastSyncedAt) {
         this.lastSyncedAt = lastSyncedAt;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
     }
 }
