@@ -20,22 +20,27 @@ import static org.mockito.Mockito.*;
 class ProjectServiceTest {
 
     @Mock
+    // Dummy repo instance, with no real db connection
     private ProjectRepository projectRepository;
 
     @Mock
     private com.llmhandoff.user.UserRepository userRepository;
 
     @InjectMocks
+    // Instantiates service, automaically injects mock repo into it
     private ProjectService projectService;
 
     private UUID projectId;
     private Project project;
 
     @BeforeEach
+    // Initializes test fixtures before each test method runs.
     void setUp() {
         projectId = UUID.randomUUID();
         project = new Project("Test Project", "Test Description");
     }
+
+//    @Test
 
     @Test
     void createProject_savesAndReturnsProject() {
@@ -66,10 +71,16 @@ class ProjectServiceTest {
 
     @Test
     void getProjectById_whenProjectExists_returnsProject() {
+        // Arrange
+        // instead of reaching into live db, we intercept the call and return Optional.of(project)
+        // Define how dependencies respond
         when(projectRepository.findById(projectId)).thenReturn(Optional.of(project));
 
+        // Act
+        // Invoke actual business method to test
         Project result = projectService.getProjectById(projectId);
 
+        // Assert & verify
         assertNotNull(result);
         assertEquals("Test Project", result.getName());
         assertEquals("Test Description", result.getDescription());

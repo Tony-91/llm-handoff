@@ -13,12 +13,12 @@ When designing the persistence + ingestion architecture for project manifests, I
 ## Decision
 I chose **Dual-Stage JSON Document Storage** using a two-stage lifecycle:
 
-1. **Stage 1 (In-Memory Validation & Type Safety)**:
+1. **Stage 1 (In-Memory Validation + Type Safety)**:
    * Incoming manifest payloads are deserialized via Jackson `ObjectMapper` into a strongly-typed Java `ManifestData` record hierarchy.
    * Syntax, structure, and required data contracts are strictly enforced at the service boundary (`ManifestService`). Invalid JSON payloads are rejected before database execution.
    * Extraneous / unexpected keys are safely handled via `@JsonIgnoreProperties(ignoreUnknown = true)`.
 
-2. **Stage 2 (Document Persistence & Snapshotting)**:
+2. **Stage 2 (Document Persistence + Snapshotting)**:
    * Validated payloads are persisted as a single `raw_content` document in the MySQL `manifests` table (`LONGTEXT`).
    * Each save creates an immutable, timestamped record preserving snapshot version history for each project.
    * On prompt generation (`/api/projects/{id}/handoff`), the latest document is retrieved in a single-row query and deserialized back into `ManifestData` for Markdown rendering.
@@ -35,5 +35,5 @@ I chose **Dual-Stage JSON Document Storage** using a two-stage lifecycle:
 * **No Database-Level Constraint Enforcement**: MySQL treats the manifest payload as a text block; data integrity guarantees rely entirely on application-layer Jackson deserialization and Java service validations.
 * **Relational Query Limitations**: Querying / filtering projects based on individual nested rules or decisions cannot be performed directly via standard relational SQL without leveraging MySQL JSON functions.
 
-## (*) Document-oriented pattern (read by ID) versus ( ) relational pattern (filter/aggregate across manifest entities)
+## Document-oriented pattern (read by ID) VERSES relational pattern (filter/aggregate across manifest entities)
 ## Stage 1 is deserialization for in-memory validation. Stage 2 is document persistence/storage, `raw_content` with deserialization.
