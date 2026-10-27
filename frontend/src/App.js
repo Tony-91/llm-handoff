@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import './App.css';
 import AuthModal from './components/AuthModal';
 
-const API_BASE = 'http://localhost:8080/api';
+const API_BASE = '/api';
 
 function App() {
   const [token, setToken] = useState(() => localStorage.getItem('auth_token') || '');
