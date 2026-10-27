@@ -40,8 +40,6 @@ services:
       dockerfile: Dockerfile
     container_name: llm-handoff-frontend
     restart: unless-stopped
-    ports:
-      - "80:80"
     depends_on:
       - backend
 
