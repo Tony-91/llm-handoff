@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const API_BASE = 'http://localhost:8080/api';
+const API_BASE = '/api';
 
 function AuthModal({ isOpen, onClose, onAuthSuccess }) {
   const [tab, setTab] = useState('login'); // 'login' | 'register'
@@ -117,7 +117,7 @@ function AuthModal({ isOpen, onClose, onAuthSuccess }) {
 
         <div className="auth-social-buttons">
           <a
-            href="http://localhost:8080/oauth2/authorization/github"
+            href="/oauth2/authorization/github"
             className="social-auth-btn github-btn"
           >
             <svg height="18" width="18" viewBox="0 0 16 16" fill="currentColor" style={{ marginRight: '8px' }}>
@@ -126,7 +126,7 @@ function AuthModal({ isOpen, onClose, onAuthSuccess }) {
             GitHub
           </a>
           <a
-            href="http://localhost:8080/oauth2/authorization/google"
+            href="/oauth2/authorization/github"
             className="social-auth-btn google-btn"
           >
             <svg height="18" width="18" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: '8px' }}>
