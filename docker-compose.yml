@@ -4,16 +4,16 @@ services:
     container_name: llm-handoff-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: llm_handoff
-      MYSQL_USER: llm_handoff
-      MYSQL_PASSWORD: llm_handoff
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-llm_handoff}
+      MYSQL_USER: ${MYSQL_USER:-llm_handoff}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-llm_handoff}
     ports:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "llm_handoff", "-pllm_handoff"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${MYSQL_USER:-llm_handoff}", "-p${MYSQL_PASSWORD:-llm_handoff}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -27,9 +27,17 @@ services:
     ports:
       - "8080:8080"
     environment:
-      DB_URL: jdbc:mysql://mysql:3306/llm_handoff?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
-      DB_USERNAME: llm_handoff
-      DB_PASSWORD: llm_handoff
+      DB_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-llm_handoff}?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+      DB_USERNAME: ${MYSQL_USER:-llm_handoff}
+      DB_PASSWORD: ${MYSQL_PASSWORD:-llm_handoff}
+      OAUTH2_REDIRECT_URI: ${OAUTH2_REDIRECT_URI:-http://localhost:3000}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-dummy-github-client-id}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-dummy-github-client-secret}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-dummy-google-client-id}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-dummy-google-client-secret}
+      JWT_SECRET: ${JWT_SECRET:-LLMHandoffSecretKeyMustBeVeryLongForHS512AlgorithmSecurity20261008SecureKeyForAuth}
+      JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-86400000}
+      SERVER_FORWARD_HEADERS_STRATEGY: ${SERVER_FORWARD_HEADERS_STRATEGY:-framework}
     depends_on:
       mysql:
         condition: service_healthy
