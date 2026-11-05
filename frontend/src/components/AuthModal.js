@@ -126,7 +126,7 @@ function AuthModal({ isOpen, onClose, onAuthSuccess }) {
             GitHub
           </a>
           <a
-            href="/oauth2/authorization/github"
+            href="/oauth2/authorization/google"
             className="social-auth-btn google-btn"
           >
             <svg height="18" width="18" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: '8px' }}>
