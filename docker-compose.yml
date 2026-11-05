@@ -9,7 +9,7 @@ services:
       MYSQL_USER: ${MYSQL_USER:-llm_handoff}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-llm_handoff}
     ports:
-      - "3306:3306"
+      - "127.0.0.1:3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
@@ -25,7 +25,7 @@ services:
     container_name: llm-handoff-backend
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     environment:
       DB_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-llm_handoff}?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
       DB_USERNAME: ${MYSQL_USER:-llm_handoff}
