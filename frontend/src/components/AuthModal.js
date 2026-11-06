@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 
 const API_BASE = '/api';
+const SHOW_GOOGLE_LOGIN = false;
 
 function AuthModal({ isOpen, onClose, onAuthSuccess }) {
   const [tab, setTab] = useState('login'); // 'login' | 'register'
@@ -125,15 +126,17 @@ function AuthModal({ isOpen, onClose, onAuthSuccess }) {
             </svg>
             GitHub
           </a>
-          <a
-            href="/oauth2/authorization/google"
-            className="social-auth-btn google-btn"
-          >
-            <svg height="18" width="18" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: '8px' }}>
-              <path d="M12.24 10.285V13.8h6.887C18.2 16.27 15.65 18 12.24 18c-3.315 0-6-2.685-6-6s2.685-6 6-6c1.47 0 2.81.53 3.855 1.405l2.67-2.67C17.155 3.17 14.835 2.25 12.24 2.25 6.86 2.25 2.5 6.61 2.5 11.99s4.36 9.74 9.74 9.74c5.62 0 9.34-3.95 9.34-9.5 0-.64-.06-1.26-.17-1.945h-9.17z"/>
-            </svg>
-            Google
-          </a>
+          {SHOW_GOOGLE_LOGIN && (
+            <a
+              href="/oauth2/authorization/google"
+              className="social-auth-btn google-btn"
+            >
+              <svg height="18" width="18" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: '8px' }}>
+                <path d="M12.24 10.285V13.8h6.887C18.2 16.27 15.65 18 12.24 18c-3.315 0-6-2.685-6-6s2.685-6 6-6c1.47 0 2.81.53 3.855 1.405l2.67-2.67C17.155 3.17 14.835 2.25 12.24 2.25 6.86 2.25 2.5 6.61 2.5 11.99s4.36 9.74 9.74 9.74c5.62 0 9.34-3.95 9.34-9.5 0-.64-.06-1.26-.17-1.945h-9.17z"/>
+              </svg>
+              Google
+            </a>
+          )}
         </div>
       </div>
     </div>
