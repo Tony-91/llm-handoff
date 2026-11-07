@@ -110,7 +110,7 @@ class ManifestServiceTest {
     @Test
     void getLatestManifest_success() {
         Manifest manifest = new Manifest(project, "1.0", validManifestJson);
-        when(projectRepository.existsById(projectId)).thenReturn(true);
+        when(projectRepository.findById(projectId)).thenReturn(Optional.of(project));
         when(manifestRepository.findTopByProjectIdOrderByCreatedAtDesc(projectId)).thenReturn(Optional.of(manifest));
 
         ManifestResponse response = manifestService.getLatestManifest(projectId);
@@ -122,14 +122,14 @@ class ManifestServiceTest {
 
     @Test
     void getLatestManifest_whenProjectNotFound_throwsProjectNotFoundException() {
-        when(projectRepository.existsById(projectId)).thenReturn(false);
+        when(projectRepository.findById(projectId)).thenReturn(Optional.empty());
 
         assertThrows(ProjectNotFoundException.class, () -> manifestService.getLatestManifest(projectId));
     }
 
     @Test
     void getLatestManifest_whenManifestNotFound_throwsManifestNotFoundException() {
-        when(projectRepository.existsById(projectId)).thenReturn(true);
+        when(projectRepository.findById(projectId)).thenReturn(Optional.of(project));
         when(manifestRepository.findTopByProjectIdOrderByCreatedAtDesc(projectId)).thenReturn(Optional.empty());
 
         assertThrows(ManifestNotFoundException.class, () -> manifestService.getLatestManifest(projectId));

@@ -13,6 +13,8 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import com.llmhandoff.auth.security.CustomUserDetailsService;
+import com.llmhandoff.auth.security.JwtTokenProvider;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Instant;
@@ -33,6 +35,12 @@ class ManifestControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @MockitoBean
+    private JwtTokenProvider jwtTokenProvider;
+
+    @MockitoBean
+    private CustomUserDetailsService customUserDetailsService;
 
     @Autowired
     private ObjectMapper objectMapper;
