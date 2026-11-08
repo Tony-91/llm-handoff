@@ -1,0 +1,40 @@
+name: Backend Tests
+
+on:
+  push:
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-tests.yml'
+  pull_request:
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-tests.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Run tests
+        run: mvn -B test
+
+      - name: Test report
+        uses: dorny/test-reporter@v2
+        if: always()
+        with:
+          name: Backend Tests
+          path: backend/target/surefire-reports/TEST-*.xml
+          reporter: java-junit
