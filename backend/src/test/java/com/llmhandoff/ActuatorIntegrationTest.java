@@ -3,48 +3,67 @@ package com.llmhandoff;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.actuate.observability.AutoConfigureObservability;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.boot.test.web.server.LocalManagementPort;
+import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.test.web.servlet.MockMvc;
 
-import static org.hamcrest.Matchers.containsString;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest
+@SpringBootTest(
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = "management.server.port=0")
 @ActiveProfiles("test")
 @AutoConfigureObservability
-@AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
-@Transactional
 class ActuatorIntegrationTest {
 
+    @LocalServerPort
+    private int serverPort;
+
+    @LocalManagementPort
+    private int managementPort;
+
     @Autowired
-    private MockMvc mockMvc;
+    private TestRestTemplate restTemplate;
 
     @Test
-    void actuatorHealth_returnsUp() throws Exception {
-        mockMvc.perform(get("/actuator/health"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("UP"));
+    void managementServer_runsOnSeparatePort() {
+        assertThat(managementPort).isNotEqualTo(serverPort);
     }
 
     @Test
-    void actuatorPrometheus_returnsMetricsText() throws Exception {
-        mockMvc.perform(get("/actuator/prometheus"))
-                .andExpect(status().isOk())
-                .andExpect(content().string(containsString("jvm_memory_used_bytes")));
+    void healthProbes_onManagementPort_arePublic() {
+        ResponseEntity<String> health = managementGet("/actuator/health");
+        assertThat(health.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(health.getBody()).contains("\"status\":\"UP\"");
+        assertThat(health.getBody()).doesNotContain("\"db\":");
+        assertThat(managementGet("/actuator/health/liveness").getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(managementGet("/actuator/health/readiness").getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
     @Test
-    void actuatorMetrics_returnsMetricList() throws Exception {
-        mockMvc.perform(get("/actuator/metrics"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.names").isArray());
+    void prometheusAndMetrics_onManagementPort_requireAuthentication() {
+        assertThat(managementGet("/actuator/prometheus").getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(managementGet("/actuator/metrics").getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void actuator_onApplicationPort_isNotServed() {
+        assertThat(applicationGet("/actuator/health").getStatusCode()).isNotEqualTo(HttpStatus.OK);
+        assertThat(applicationGet("/actuator/prometheus").getStatusCode()).isNotEqualTo(HttpStatus.OK);
+        assertThat(applicationGet("/actuator/metrics").getStatusCode()).isNotEqualTo(HttpStatus.OK);
+    }
+
+    private ResponseEntity<String> managementGet(String path) {
+        return restTemplate.getForEntity("http://localhost:" + managementPort + path, String.class);
+    }
+
+    private ResponseEntity<String> applicationGet(String path) {
+        return restTemplate.getForEntity("http://localhost:" + serverPort + path, String.class);
     }
 }

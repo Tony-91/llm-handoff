@@ -38,6 +38,12 @@ services:
       JWT_SECRET: ${JWT_SECRET:-LLMHandoffSecretKeyMustBeVeryLongForHS512AlgorithmSecurity20261008SecureKeyForAuth}
       JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-86400000}
       SERVER_FORWARD_HEADERS_STRATEGY: ${SERVER_FORWARD_HEADERS_STRATEGY:-framework}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8081/actuator/health/readiness"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     depends_on:
       mysql:
         condition: service_healthy
@@ -51,7 +57,8 @@ services:
     ports:
       - "3000:80" 
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
 volumes:
   mysql_data:

@@ -30,7 +30,7 @@ jobs:
 
       - name: Run tests
         run: mvn -B test
-
+# configure test report
       - name: Test report
         uses: dorny/test-reporter@v2
         if: always()
