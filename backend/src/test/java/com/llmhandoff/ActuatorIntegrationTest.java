@@ -47,9 +47,16 @@ class ActuatorIntegrationTest {
     }
 
     @Test
-    void prometheusAndMetrics_onManagementPort_requireAuthentication() {
-        assertThat(managementGet("/actuator/prometheus").getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    void prometheus_onManagementPort_isScrapableAnonymously() {
+        ResponseEntity<String> prometheus = managementGet("/actuator/prometheus");
+        assertThat(prometheus.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(prometheus.getBody()).contains("jvm_memory_used_bytes");
+    }
+
+    @Test
+    void otherEndpoints_onManagementPort_requireAuthentication() {
         assertThat(managementGet("/actuator/metrics").getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(managementGet("/actuator/env").getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
     @Test
