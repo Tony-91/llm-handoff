@@ -5,7 +5,7 @@ Goal: know when ai-handoff.online is down, slow, or failing, and have the data t
 Decisions:
 - Metrics and dashboards run in **self-hosted Prometheus + Grafana** containers (bound to 127.0.0.1; prod access via SSH tunnel). Logs and alerting targets are decided in M4/M5.
 - Alerts are delivered by **email**.
-- Scope ends at **M5**. Distributed tracing is out of scope.
+- Scope ends at **M3**. Distributed tracing is out of scope.
 
 Each milestone is a small, independently deployable change with an exit check.
 
@@ -32,16 +32,3 @@ Each milestone is a small, independently deployable change with an exit check.
 - Build `GitHubClient` from the injected `RestClient.Builder` so outbound GitHub calls are recorded as `http.client.requests`.
 - No high-cardinality tags (no project or user IDs).
 - **Exit:** new metrics visible in Grafana Cloud; unit tests assert them via `MeterRegistry`.
-
-## M4 – Structured logs
-- JSON console logs via Boot's `logging.structured.format.console`, with a request/correlation ID in MDC.
-- Docker log rotation on all services.
-- Alloy ships container logs to Grafana Cloud Logs (Loki).
-- **Exit:** one request can be followed across log lines by its ID in Grafana Cloud.
-
-## M5 – Alerting and operations
-- Grafana Cloud alert rules: backend down, 5xx rate, p95 latency, git sync failure rate, JVM heap pressure.
-- Email contact point and notification policy.
-- Synthetic uptime check on https://ai-handoff.online (Grafana Cloud Synthetic Monitoring).
-- Runbook (`docs/runbook.md`) and `ADR-002` for the observability stack choice.
-- **Exit:** a test alert arrives by email; stopping the backend triggers a real alert.

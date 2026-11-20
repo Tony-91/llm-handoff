@@ -1,0 +1,53 @@
+{
+  "uid": "handoff-application-overview",
+  "title": "App Overview",
+  "tags": ["llm-handoff"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {"from": "now-1h", "to": "now"},
+  "templating": {"list": []},
+  "panels": [
+    {
+      "id": 1,
+      "title": "Manifest Saves",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "targets": [
+        {
+          "expr": "rate(manifest_saves_total{application=\"llm-handoff-backend\"}[5m])",
+          "legendFormat": "saves/sec",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(manifest_save_duration_seconds_bucket{application=\"llm-handoff-backend\"}[5m])))",
+          "legendFormat": "p95 save latency",
+          "refId": "B"
+        },
+        {
+          "expr": "rate(manifest_save_duration_seconds_sum{application=\"llm-handoff-backend\"}[5m]) / rate(manifest_save_duration_seconds_count{application=\"llm-handoff-backend\"}[5m])",
+          "legendFormat": "avg save latency",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "min": 0 },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "saves/sec" },
+            "properties": [{ "id": "unit", "value": "reqps" }]
+          },
+          {
+            "matcher": { "id": "byRegexp", "options": "/.*latency/" },
+            "properties": [
+              { "id": "unit", "value": "s" },
+              { "id": "custom.axisPlacement", "value": "right" }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

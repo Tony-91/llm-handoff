@@ -715,7 +715,11 @@ function App() {
                               {state.generatedHighlights && (
                                 <div className="inspection-highlights-box">
                                   <h5>Repository Auto-Inspection Summary</h5>
-                                  <p>{state.generatedHighlights}</p>
+                                  <ul className="highlights-list">
+                                    {Object.entries(state.generatedHighlights).filter(([key]) => key !== 'Detected Files').map(([key, value]) => (
+                                      <li key={key}><strong>{key}:</strong> {value}</li>
+                                    ))}
+                                  </ul>
                                   {state.detectedFiles && state.detectedFiles.length > 0 && (
                                     <div className="detected-files-list">
                                       <span>Detected Configs: </span>

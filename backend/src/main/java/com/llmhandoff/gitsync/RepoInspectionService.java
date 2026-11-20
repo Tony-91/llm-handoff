@@ -91,7 +91,7 @@ public class RepoInspectionService {
             log.warn("No standard descriptor files detected in repository {} on branch {}", normalizedRepo, branch);
         }
 
-        ManifestData manifestData = buildManifestFromInspection(project, fileContents);
+        ManifestData manifestData = buildManifestFromInspection(project, fileContents, allPaths);
 
         String rawJson;
         try {
@@ -112,7 +112,7 @@ public class RepoInspectionService {
         return new GeneratedManifestResponse(rawJson, manifestData, detectedFiles, highlights);
     }
 
-    private ManifestData buildManifestFromInspection(Project project, Map<String, String> files) {
+    private ManifestData buildManifestFromInspection(Project project, Map<String, String> files, Set<String> allPaths) {
         List<String> languages = new ArrayList<>();
         List<String> frameworks = new ArrayList<>();
         List<String> databases = new ArrayList<>();
@@ -264,17 +264,44 @@ public class RepoInspectionService {
             commands.put("run", "go run .");
         }
 
-        // Default fallbacks if no descriptors found
-        if (languages.isEmpty()) languages.add("Java 21");
-        if (frameworks.isEmpty()) frameworks.add("Spring Boot 3.5.0");
-        if (databases.isEmpty()) databases.add("MySQL 8.0");
-        if (buildTools.isEmpty()) buildTools.add("Maven");
-        if (commands.isEmpty()) {
-            commands.put("setup", "docker-compose up -d");
-            commands.put("build", "mvn clean compile");
-            commands.put("test", "mvn test");
-            commands.put("run", "mvn spring-boot:run");
+        // 7. Fallback detection: file extensions in the tree + README keywords
+        if (!allPaths.isEmpty()) {
+            if (allPaths.stream().anyMatch(p -> p.endsWith(".js") || p.endsWith(".mjs") || p.endsWith(".cjs"))) {
+                if (!languages.contains("JavaScript") && !languages.contains("TypeScript")) languages.add("JavaScript");
+                if (!runtimes.contains("Node.js")) runtimes.add("Node.js");
+            }
+            if (allPaths.stream().anyMatch(p -> p.endsWith(".ts") || p.endsWith(".tsx"))) {
+                if (!languages.contains("TypeScript")) languages.add("TypeScript");
+                if (!runtimes.contains("Node.js")) runtimes.add("Node.js");
+            }
+            if (allPaths.stream().anyMatch(p -> p.endsWith(".py")) && languages.stream().noneMatch(l -> l.startsWith("Python"))) languages.add("Python");
+            if (allPaths.stream().anyMatch(p -> p.endsWith(".go")) && !languages.contains("Go")) languages.add("Go");
+            if (allPaths.stream().anyMatch(p -> p.endsWith(".rs")) && !languages.contains("Rust")) languages.add("Rust");
+            if (allPaths.stream().anyMatch(p -> p.endsWith(".java")) && languages.stream().noneMatch(l -> l.startsWith("Java"))) languages.add("Java");
         }
+
+        String readmeContent = files.get("README.md");
+        if (readmeContent != null) {
+            String lower = readmeContent.toLowerCase();
+            if (lower.contains("express") && !frameworks.contains("Express.js")) frameworks.add("Express.js");
+            if ((lower.contains("node.js") || lower.contains("node js") || lower.contains("npm")) && !runtimes.contains("Node.js")) {
+                runtimes.add("Node.js");
+                if (!languages.contains("JavaScript") && !languages.contains("TypeScript")) languages.add("JavaScript");
+            }
+            if (lower.contains("react") && !frameworks.contains("React")) frameworks.add("React");
+            if (lower.contains("django") && !frameworks.contains("Django")) frameworks.add("Django");
+            if (lower.contains("flask") && !frameworks.contains("Flask")) frameworks.add("Flask");
+            if (lower.contains("fastapi") && !frameworks.contains("FastAPI")) frameworks.add("FastAPI");
+            if (lower.contains("mongodb") && !databases.contains("MongoDB")) databases.add("MongoDB");
+            if (lower.contains("postgres") && !databases.contains("PostgreSQL")) databases.add("PostgreSQL");
+            if (lower.contains("mysql") && !databases.contains("MySQL 8.0")) databases.add("MySQL 8.0");
+        }
+
+        // Honest fallbacks: nothing matched, so report "not detected" instead of inventing a stack
+        if (languages.isEmpty()) languages.add("Not detected");
+        if (frameworks.isEmpty()) frameworks.add("Not detected");
+        if (databases.isEmpty()) databases.add("None detected");
+        if (buildTools.isEmpty()) buildTools.add("Not detected");
 
         // Add standard architectural rules
         rules.add("Always write unit tests for services and slice tests for controllers");
@@ -285,7 +312,9 @@ public class RepoInspectionService {
                 "Review and refine auto-detected commands and rules before exporting handoff packages"
         );
 
-        String architecture = "Full-stack application architecture combining " + String.join(" & ", frameworks) + ".";
+        String architecture = frameworks.contains("Not detected")
+                ? "Unable to auto-detect architecture from repository contents; manual review required."
+                : "Application architecture combining " + String.join(" & ", frameworks) + ".";
 
         ManifestData.ProjectInfo projectInfo = new ManifestData.ProjectInfo(
                 projectName,
@@ -297,7 +326,7 @@ public class RepoInspectionService {
                 String.join(" / ", frameworks),
                 String.join(" / ", databases),
                 String.join(" / ", buildTools),
-                runtimes.isEmpty() ? "JVM" : String.join(" / ", runtimes)
+                runtimes.isEmpty() ? "Not detected" : String.join(" / ", runtimes)
         );
 
         ManifestData.ProjectContext context = new ManifestData.ProjectContext(

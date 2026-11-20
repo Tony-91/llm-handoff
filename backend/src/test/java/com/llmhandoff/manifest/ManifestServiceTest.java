@@ -5,6 +5,8 @@ import com.llmhandoff.error.ManifestNotFoundException;
 import com.llmhandoff.error.ProjectNotFoundException;
 import com.llmhandoff.project.Project;
 import com.llmhandoff.project.ProjectRepository;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,6 +33,9 @@ class ManifestServiceTest {
 
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
+
+    @Spy
+    private MeterRegistry meterRegistry = new SimpleMeterRegistry();
 
     @InjectMocks
     private ManifestService manifestService;
