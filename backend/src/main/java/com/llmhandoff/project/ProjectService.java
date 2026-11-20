@@ -36,9 +36,9 @@ public class ProjectService {
     @Transactional(readOnly = true)
     public List<Project> getProjectsForUser(UUID userId) {
         if (userId == null) {
-            return projectRepository.findAll();
+            return projectRepository.findAllByOrderByCreatedAtDesc();
         }
-        return projectRepository.findByUserId(userId);
+        return projectRepository.findByUserIdOrderByCreatedAtDesc(userId);
     }
 
     @Transactional(readOnly = true)

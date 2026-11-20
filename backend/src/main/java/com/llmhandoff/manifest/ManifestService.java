@@ -6,6 +6,9 @@ import com.llmhandoff.error.ManifestNotFoundException;
 import com.llmhandoff.error.ProjectNotFoundException;
 import com.llmhandoff.project.Project;
 import com.llmhandoff.project.ProjectRepository;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
@@ -19,27 +22,38 @@ public class ManifestService {
     private final ManifestRepository manifestRepository;
     private final ProjectRepository projectRepository;
     private final ObjectMapper objectMapper;
+    private final Counter manifestSaves;
+    private final Timer manifestSaveDuration;
 
     public ManifestService(
             ManifestRepository manifestRepository,
             ProjectRepository projectRepository,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            MeterRegistry meterRegistry
     ) {
         this.manifestRepository = manifestRepository;
         this.projectRepository = projectRepository;
         this.objectMapper = objectMapper;
+        this.manifestSaves = meterRegistry.counter("manifest_saves_total");
+        this.manifestSaveDuration = Timer.builder("manifest_save_duration")
+                .description("Time taken to validate and persist a manifest")
+                .publishPercentileHistogram()
+                .register(meterRegistry);
     }
 
     public ManifestResponse saveManifest(UUID projectId, SaveManifestRequest request, UUID userId) {
-        Project project = getProjectWithOwnershipCheck(projectId, userId);
+        return manifestSaveDuration.record(() -> {
+            Project project = getProjectWithOwnershipCheck(projectId, userId);
 
-        ManifestData manifestData = parseManifestData(request.content());
-        String schemaVersion = manifestData.schemaVersion() != null ? manifestData.schemaVersion() : "1.0";
+            ManifestData manifestData = parseManifestData(request.content());
+            String schemaVersion = manifestData.schemaVersion() != null ? manifestData.schemaVersion() : "1.0";
 
-        Manifest manifest = new Manifest(project, schemaVersion, request.content());
-        Manifest saved = manifestRepository.save(manifest);
+            Manifest manifest = new Manifest(project, schemaVersion, request.content());
+            Manifest saved = manifestRepository.save(manifest);
 
-        return ManifestResponse.from(saved, manifestData);
+            manifestSaves.increment();
+            return ManifestResponse.from(saved, manifestData);
+        });
     }
 
     public ManifestResponse saveManifest(UUID projectId, SaveManifestRequest request) {

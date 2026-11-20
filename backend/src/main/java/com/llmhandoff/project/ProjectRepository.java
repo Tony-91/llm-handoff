@@ -9,6 +9,8 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface ProjectRepository extends JpaRepository<Project, UUID> {
     List<Project> findByRepoIdentifier(String repoIdentifier);
-    List<Project> findByUserId(UUID userId);
+    List<Project> findByUserIdOrderByCreatedAtDesc(UUID userId);
+
+    List<Project> findAllByOrderByCreatedAtDesc();
     Optional<Project> findByIdAndUserId(UUID id, UUID userId);
 }

@@ -17,6 +17,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -124,6 +125,7 @@ class GitSyncServiceTest {
     @Test
     @DisplayName("handleGitHubWebhook triggers sync for matching projects")
     void handleGitHubWebhook_success() {
+        ReflectionTestUtils.setField(project, "id", projectId);
         project.setRepoIdentifier("my-org/my-repo");
         project.setDefaultBranch("main");
 
