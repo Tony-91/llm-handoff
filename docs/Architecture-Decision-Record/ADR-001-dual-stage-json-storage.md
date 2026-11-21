@@ -7,6 +7,7 @@ Accepted
 Project manifests track a rich, evolving set of metadata required to construct LLM context handoff prompts. This includes project overviews, environment configurations, command dictionaries, architectural decisions, developer rules, and open questions.
 
 When designing the persistence + ingestion architecture for project manifests, I evaluated two architectural strategies:
+
 1. **Full Relational Normalization**: Decomposing each manifest into separate database tables (e.g., `manifests`, `environments`, `commands`, `decisions`, `rules`, `open_questions`) linked via foreign keys.
 2. **Dual-Stage JSON Document Storage**: Validating and mapping incoming JSON payloads into strongly-typed Java records in memory upon write, while persisting the payload as an immutable raw JSON document (`raw_content`) in MySQL linked to the project entity.
 
@@ -19,7 +20,7 @@ I chose **Dual-Stage JSON Document Storage** using a two-stage lifecycle:
    * Extraneous / unexpected keys are safely handled via `@JsonIgnoreProperties(ignoreUnknown = true)`.
 
 2. **Stage 2 (Document Persistence + Snapshotting)**:
-   * Validated payloads are persisted as a single `raw_content` document in the MySQL `manifests` table (`LONGTEXT`).
+   * Validated payloads are persisted as a single `raw_content` document in the MySQL `manifests` table (`MEDIUMTEXT`).
    * Each save creates an immutable, timestamped record preserving snapshot version history for each project.
    * On prompt generation (`/api/projects/{id}/handoff`), the latest document is retrieved in a single-row query and deserialized back into `ManifestData` for Markdown rendering.
 
@@ -35,5 +36,6 @@ I chose **Dual-Stage JSON Document Storage** using a two-stage lifecycle:
 * **No Database-Level Constraint Enforcement**: MySQL treats the manifest payload as a text block; data integrity guarantees rely entirely on application-layer Jackson deserialization and Java service validations.
 * **Relational Query Limitations**: Querying / filtering projects based on individual nested rules or decisions cannot be performed directly via standard relational SQL without leveraging MySQL JSON functions.
 
-## Document-oriented pattern (read by ID) VERSES relational pattern (filter/aggregate across manifest entities)
+## Document-oriented pattern (read by ID) VERSUS relational pattern (filter/aggregate across manifest entities)
+
 ## Stage 1 is deserialization for in-memory validation. Stage 2 is document persistence/storage, `raw_content` with deserialization.

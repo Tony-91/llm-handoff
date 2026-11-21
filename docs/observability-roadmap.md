@@ -14,18 +14,22 @@ Each milestone is a small, independently deployable change with an exit check.
 - Fix stale tests (`@WebMvcTest` security beans, manifest/gitsync service tests).
 - **Exit:** `mvn test` passes, including `ActuatorIntegrationTest`.
 
-## M1 – Secure endpoints and health
-- Only `/actuator/health` (liveness/readiness) is public; metrics/prometheus move to an internal management port that is not published to the host.
-- `health.show-details=when-authorized`; remove deprecated `management.endpoint.prometheus.enabled`.
-- Compose `healthcheck` on the backend using `/actuator/health/readiness`; frontend waits for a healthy backend.
-- **Exit:** `/actuator/prometheus` unreachable from outside; `docker compose ps` shows backend `healthy`; tests cover both.
+## M1 – Lock down the endpoints and add health checks (small)
+- Audit endpoints: authenticate or internally-bind the sensitive endpoints.
+- Health checks give us green light.
+- Make only `/actuator/health` (liveness and readiness) public.
+- Move metrics and prometheus to an internal management port (for example 8081) that isn't published to the host. Set `show-details=when-authorized`. Remove the deprecated `prometheus.enabled` setting.
+- Add a compose healthcheck for the backend that hits `/actuator/health/readiness`. Make the frontend wait until the backend reports healthy.
+- **Done when:** from outside, `/actuator/prometheus` doesn't respond, `docker compose ps` shows the backend as healthy, and the tests cover both.
 
-## M2 – Metrics in self-hosted Prometheus + Grafana
-- Add Prometheus and Grafana services to compose, UIs bound to 127.0.0.1, with a scrape config against the backend management port, a retention limit, and persistent volumes.
-- Management server listens on the container interface (`management.server.address` unset); `/actuator/prometheus` is permitAll since only the internal compose network can reach port 8081.
-- Provision Grafana datasource + dashboards automatically: JVM, HTTP RED (rate, errors, duration), HikariCP, MySQL.
-- On prod, access Grafana via SSH tunnel, not a public port.
-- **Exit:** dashboards show live data locally and on the server.
+## M2 – Collect metrics and build dashboards (medium)
+- Add Prometheus and Grafana containers to compose, bound to 127.0.0.1, with a scrape config, a retention limit and a persistent volume.
+- Set up Grafana dashboards automatically for JVM, HTTP traffic (request rate, errors, response time), the database connection pool and MySQL.
+- On prod, open Grafana through an SSH tunnel rather than exposing it publicly.
+- **Done when:** the dashboards show live data locally and on the server.
+**Lesson learned:**
+- You can query Prometheus directly without Grafana — e.g. `http://localhost:9090` has a built-in query UI, which is handy for debugging whether a metric exists before building a panel around it.
+- Prometheus = collector + storage + query engine.
 
 ## M3 – App-level metrics
 - Counters/timers for: logins (provider, outcome), OAuth failures, git sync (duration, outcome), webhooks received, manifest saves and validation failures, handoff generations.
