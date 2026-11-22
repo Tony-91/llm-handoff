@@ -4,6 +4,12 @@ import AuthModal from './components/AuthModal';
 
 const API_BASE = '/api';
 
+const HANDOFF_STEPS = [
+  { title: 'GitHub Integration & Sync' },
+  { title: 'Auto-Generate Manifest' },
+  { title: 'Review & Hand Off' }
+];
+
 function App() {
   const [token, setToken] = useState(() => localStorage.getItem('auth_token') || '');
   const [user, setUser] = useState(() => {
@@ -224,6 +230,21 @@ function App() {
     if (willExpand && !current.manifest) {
       await fetchProjectManifest(projectId);
     }
+  };
+
+  const goToStep = (projectId, step) => {
+    setProjectState((prev) => {
+      const current = prev[projectId]?.activeStep || 0;
+      const next = Math.max(0, Math.min(HANDOFF_STEPS.length - 1, step));
+      return {
+        ...prev,
+        [projectId]: {
+          ...prev[projectId],
+          activeStep: next,
+          stepDirection: next >= current ? 'forward' : 'back'
+        }
+      };
+    });
   };
 
   const validateJson = (text) => {
@@ -613,6 +634,9 @@ function App() {
                     const isExpanded = state.expanded;
                     const manifest = state.manifest;
                     const parsed = manifest?.parsedData;
+                    const activeStep = state.activeStep || 0;
+                    const slideClass = (index) =>
+                      `carousel-slide ${index === activeStep ? `slide-in-${state.stepDirection || 'forward'}` : ''}`;
 
                     return (
                       <div key={project.id} className={`project-card ${isExpanded ? 'expanded' : ''}`}>
@@ -635,228 +659,294 @@ function App() {
                           <div className="project-card-body">
                             {state.errorMessage && <div className="card-error">{state.errorMessage}</div>}
 
-                            {/* GitHub Git Sync Configuration Section */}
-                            <div className="git-sync-section">
-                              <h4>GitHub Integration & Sync</h4>
-                              <div className="git-config-row">
-                                <div className="git-input-group">
-                                  <label>GitHub Repository (owner/repo)</label>
-                                  <input
-                                    type="text"
-                                    placeholder="e.g. facebook/react"
-                                    defaultValue={project.repoIdentifier || ''}
-                                    id={`repo-input-${project.id}`}
-                                  />
-                                </div>
-                                <div className="git-input-group branch-group">
-                                  <label>Branch</label>
-                                  <input
-                                    type="text"
-                                    placeholder="main"
-                                    defaultValue={project.defaultBranch || 'main'}
-                                    id={`branch-input-${project.id}`}
-                                  />
-                                </div>
-                                <button
-                                  type="button"
-                                  className="btn-secondary"
-                                  disabled={state.savingGitConfig}
-                                  onClick={() => {
-                                    const repo = document.getElementById(`repo-input-${project.id}`).value;
-                                    const branch = document.getElementById(`branch-input-${project.id}`).value;
-                                    handleSaveGitConfig(project.id, repo, branch);
-                                  }}
-                                >
-                                  {state.savingGitConfig ? 'Saving...' : 'Save Repo'}
-                                </button>
-                                <button
-                                  type="button"
-                                  className="btn-sync"
-                                  disabled={state.syncingGit || !project.repoIdentifier}
-                                  onClick={() => handleSyncGit(project.id)}
-                                >
-                                  {state.syncingGit ? 'Syncing...' : 'Sync from GitHub'}
-                                </button>
-                                <button
-                                  type="button"
-                                  className="btn-inspect"
-                                  disabled={state.generatingManifest || !(project.repoIdentifier || document.getElementById(`repo-input-${project.id}`)?.value)}
-                                  onClick={() => {
-                                    const repo = document.getElementById(`repo-input-${project.id}`)?.value || project.repoIdentifier;
-                                    const branch = document.getElementById(`branch-input-${project.id}`)?.value || project.defaultBranch || 'main';
-                                    handleGenerateManifest(project.id, repo, branch);
-                                  }}
-                                  title="Inspect repo descriptors and auto-generate candidate .llmhandoff.json"
-                                >
-                                  {state.generatingManifest ? 'Analyzing Repo...' : 'Auto-Generate Manifest'}
-                                </button>
-                              </div>
+                            <div className="steps-carousel">
+                              <ol className="carousel-stepper">
+                                {HANDOFF_STEPS.map((step, index) => {
+                                  const isDone = index === 0 ? Boolean(project.repoIdentifier) : index === 1 ? Boolean(manifest) : false;
+                                  return (
+                                    <li key={step.title}>
+                                      <button
+                                        type="button"
+                                        className={`stepper-item ${index === activeStep ? 'active' : ''} ${isDone ? 'done' : ''}`}
+                                        onClick={() => goToStep(project.id, index)}
+                                        aria-current={index === activeStep ? 'step' : undefined}
+                                      >
+                                        <span className="stepper-num">{isDone ? '✓' : index + 1}</span>
+                                        <span className="stepper-label">{step.title}</span>
+                                      </button>
+                                    </li>
+                                  );
+                                })}
+                              </ol>
 
-                              <div className="git-status-bar">
-                                <span className="git-status-item">
-                                  Status: <strong className={`status-${(project.gitSyncStatus || 'NOT_CONFIGURED').toLowerCase()}`}>{project.gitSyncStatus || 'NOT_CONFIGURED'}</strong>
-                                </span>
-                                {project.lastSyncedAt && (
-                                  <span className="git-status-item">
-                                    Last Synced: {new Date(project.lastSyncedAt).toLocaleString()}
-                                  </span>
-                                )}
-                                {project.gitSyncError && (
-                                  <span className="git-status-item error-text">
-                                    Error: {project.gitSyncError}
-                                  </span>
-                                )}
-                                {state.gitConfigSuccess && <span className="success-text">Git config saved!</span>}
-                                {state.syncSuccess && <span className="success-text">Synced successfully!</span>}
-                                {state.generateSuccess && <span className="success-text">Manifest draft generated! Review below.</span>}
-                              </div>
-
-                              {/* Inspection Summary Highlights */}
-                              {state.generatedHighlights && (
-                                <div className="inspection-highlights-box">
-                                  <h5>Repository Auto-Inspection Summary</h5>
-                                  <ul className="highlights-list">
-                                    {Object.entries(state.generatedHighlights).filter(([key]) => key !== 'Detected Files').map(([key, value]) => (
-                                      <li key={key}><strong>{key}:</strong> {value}</li>
-                                    ))}
-                                  </ul>
-                                  {state.detectedFiles && state.detectedFiles.length > 0 && (
-                                    <div className="detected-files-list">
-                                      <span>Detected Configs: </span>
-                                      {state.detectedFiles.map((f, i) => (
-                                        <code key={i} className="file-chip">{f}</code>
-                                      ))}
+                              <div className="carousel-viewport">
+                                {/* Step 1: GitHub Integration & Sync */}
+                                <section className={slideClass(0)} hidden={activeStep !== 0}>
+                                  <div className="step-heading">
+                                    <span className="step-eyebrow">Step 1 of {HANDOFF_STEPS.length}</span>
+                                    <h4>GitHub Integration & Sync</h4>
+                                    <p className="helper-text">Connect the GitHub repository for this project and save it. If the repo already contains a <code>.llmhandoff.json</code>, use Sync to pull it in.</p>
+                                  </div>
+                                  <div className="git-config-row">
+                                    <div className="git-input-group">
+                                      <label htmlFor={`repo-input-${project.id}`}>GitHub Repository (owner/repo)</label>
+                                      <input
+                                        type="text"
+                                        placeholder="e.g. facebook/react"
+                                        defaultValue={project.repoIdentifier || ''}
+                                        id={`repo-input-${project.id}`}
+                                      />
                                     </div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Active Manifest Visual Dashboard */}
-                            <div className="manifest-section">
-                              <div className="manifest-header">
-                                <h4>Active Manifest Overview</h4>
-                                {manifest && (
-                                  <button
-                                    className="btn-copy-package"
-                                    onClick={() => handleCopyHandoffPackage(project.id)}
-                                  >
-                                    {state.copySuccess ? 'Copied Prompt to Clipboard!' : 'Copy Handoff Package'}
-                                  </button>
-                                )}
-                              </div>
-
-                              {state.loadingManifest ? (
-                                <p className="helper-text">Loading manifest data...</p>
-                              ) : parsed ? (
-                                <div className="dashboard-grid">
-                                  {/* Environment info */}
-                                  {parsed.environment && (
-                                    <div className="dashboard-card">
-                                      <h5>Environment & Tech Stack</h5>
-                                      <div className="badge-group">
-                                        {parsed.environment.language && <span className="chip chip-blue">{parsed.environment.language}</span>}
-                                        {parsed.environment.framework && <span className="chip chip-purple">{parsed.environment.framework}</span>}
-                                        {parsed.environment.database && <span className="chip chip-green">{parsed.environment.database}</span>}
-                                        {parsed.environment.buildTool && <span className="chip chip-orange">{parsed.environment.buildTool}</span>}
-                                        {parsed.environment.runtime && <span className="chip chip-teal">{parsed.environment.runtime}</span>}
-                                      </div>
+                                    <div className="git-input-group branch-group">
+                                      <label htmlFor={`branch-input-${project.id}`}>Branch</label>
+                                      <input
+                                        type="text"
+                                        placeholder="main"
+                                        defaultValue={project.defaultBranch || 'main'}
+                                        id={`branch-input-${project.id}`}
+                                      />
                                     </div>
-                                  )}
+                                  </div>
+                                  <div className="step-actions">
+                                    <button
+                                      type="button"
+                                      className="btn-secondary"
+                                      disabled={state.savingGitConfig}
+                                      onClick={() => {
+                                        const repo = document.getElementById(`repo-input-${project.id}`).value;
+                                        const branch = document.getElementById(`branch-input-${project.id}`).value;
+                                        handleSaveGitConfig(project.id, repo, branch);
+                                      }}
+                                    >
+                                      {state.savingGitConfig ? 'Saving...' : 'Save Repo'}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="btn-sync"
+                                      disabled={state.syncingGit || !project.repoIdentifier}
+                                      onClick={() => handleSyncGit(project.id)}
+                                    >
+                                      {state.syncingGit ? 'Syncing...' : 'Sync from GitHub'}
+                                    </button>
+                                  </div>
 
-                                  {/* Commands */}
-                                  {parsed.commands && Object.keys(parsed.commands).length > 0 && (
-                                    <div className="dashboard-card">
-                                      <h5>Standard Commands</h5>
-                                      <div className="commands-list">
-                                        {Object.entries(parsed.commands).map(([k, v]) => (
-                                          <div key={k} className="command-row">
-                                            <span className="cmd-name">{k}:</span> <code>{v}</code>
-                                          </div>
+                                  <div className="git-status-bar">
+                                    <span className="git-status-item">
+                                      Status: <strong className={`status-${(project.gitSyncStatus || 'NOT_CONFIGURED').toLowerCase()}`}>{project.gitSyncStatus || 'NOT_CONFIGURED'}</strong>
+                                    </span>
+                                    {project.lastSyncedAt && (
+                                      <span className="git-status-item">
+                                        Last Synced: {new Date(project.lastSyncedAt).toLocaleString()}
+                                      </span>
+                                    )}
+                                    {project.gitSyncError && (
+                                      <span className="git-status-item error-text">
+                                        Error: {project.gitSyncError}
+                                      </span>
+                                    )}
+                                    {state.gitConfigSuccess && <span className="success-text">Git config saved!</span>}
+                                    {state.syncSuccess && <span className="success-text">Synced successfully!</span>}
+                                  </div>
+                                </section>
+
+                                {/* Step 2: Auto-Generate Manifest & JSON editor */}
+                                <section className={slideClass(1)} hidden={activeStep !== 1}>
+                                  <div className="step-heading">
+                                    <span className="step-eyebrow">Step 2 of {HANDOFF_STEPS.length}</span>
+                                    <h4>Auto-Generate Manifest</h4>
+                                    <p className="helper-text">Inspect the saved repository to draft a <code>.llmhandoff.json</code>, review or edit it below, then save to activate it.</p>
+                                  </div>
+                                  <div className="step-actions">
+                                    <button
+                                      type="button"
+                                      className="btn-inspect"
+                                      disabled={state.generatingManifest || !(project.repoIdentifier || document.getElementById(`repo-input-${project.id}`)?.value)}
+                                      onClick={() => {
+                                        const repo = document.getElementById(`repo-input-${project.id}`)?.value || project.repoIdentifier;
+                                        const branch = document.getElementById(`branch-input-${project.id}`)?.value || project.defaultBranch || 'main';
+                                        handleGenerateManifest(project.id, repo, branch);
+                                      }}
+                                      title="Inspect repo descriptors and auto-generate candidate .llmhandoff.json"
+                                    >
+                                      {state.generatingManifest ? 'Analyzing Repo...' : 'Auto-Generate Manifest'}
+                                    </button>
+                                    <span className="helper-text inline-hint">Uses the repository and branch from Step 1.</span>
+                                    {state.generateSuccess && <span className="success-text">Manifest draft generated! Review below.</span>}
+                                  </div>
+
+                                  {/* Inspection Summary Highlights */}
+                                  {state.generatedHighlights && (
+                                    <div className="inspection-highlights-box">
+                                      <h5>Repository Auto-Inspection Summary</h5>
+                                      <ul className="highlights-list">
+                                        {Object.entries(state.generatedHighlights).filter(([key]) => key !== 'Detected Files').map(([key, value]) => (
+                                          <li key={key}><strong>{key}:</strong> {value}</li>
                                         ))}
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {/* Context Details */}
-                                  {parsed.context && (
-                                    <div className="dashboard-card full-width">
-                                      <h5>Context & Directives</h5>
-                                      {parsed.context.architecture && (
-                                        <p className="architecture-text">{parsed.context.architecture}</p>
-                                      )}
-                                      {parsed.context.decisions && parsed.context.decisions.length > 0 && (
-                                        <div className="checklist-block">
-                                          <strong>Key Decisions:</strong>
-                                          <ul>
-                                            {parsed.context.decisions.map((d, i) => (
-                                              <li key={i}>{d}</li>
-                                            ))}
-                                          </ul>
-                                        </div>
-                                      )}
-                                      {parsed.context.rules && parsed.context.rules.length > 0 && (
-                                        <div className="checklist-block">
-                                          <strong>Development Rules:</strong>
-                                          <ul>
-                                            {parsed.context.rules.map((r, i) => (
-                                              <li key={i}>{r}</li>
-                                            ))}
-                                          </ul>
+                                      </ul>
+                                      {state.detectedFiles && state.detectedFiles.length > 0 && (
+                                        <div className="detected-files-list">
+                                          <span>Detected Configs: </span>
+                                          {state.detectedFiles.map((f, i) => (
+                                            <code key={i} className="file-chip">{f}</code>
+                                          ))}
                                         </div>
                                       )}
                                     </div>
                                   )}
-                                </div>
-                              ) : (
-                                <div className="empty-manifest-box">
-                                  <p>No manifest uploaded yet for this project.</p>
-                                  <p className="sub">Upload or paste a <code>.llmhandoff.json</code> below to enable deterministic prompt handoffs.</p>
-                                </div>
-                              )}
-                            </div>
 
-                            {/* JSON Ingestion & Editor Section */}
-                            <div className="json-ingestion-section">
-                              <h4>Upload or Edit <code>.llmhandoff.json</code></h4>
-                              {state.hasDraft && (
-                                <p className="preview-note">Review or modify the candidate JSON below, then click "Save & Activate Manifest".</p>
-                              )}
-                              <div className="file-input-wrapper">
-                                <label className="file-upload-btn">
-                                  Choose <code>.llmhandoff.json</code> File
-                                  <input
-                                    type="file"
-                                    accept=".json,application/json"
-                                    onChange={(e) => handleFileUpload(project.id, e.target.files[0])}
-                                  />
-                                </label>
+                                  {state.hasDraft && (
+                                    <p className="preview-note">Review or modify the candidate JSON below, then click "Save & Activate Manifest".</p>
+                                  )}
+
+                                  <div className="json-editor-container">
+                                    <div className="editor-top-bar">
+                                      <span className={`validation-badge ${state.isJsonValid ? 'valid' : 'invalid'}`}>
+                                        {state.isJsonValid ? 'Valid JSON' : 'Invalid / Empty JSON'}
+                                      </span>
+                                    </div>
+                                    <textarea
+                                      className={`json-textarea ${state.isJsonValid ? 'json-valid' : state.rawInput ? 'json-invalid' : ''}`}
+                                      placeholder={'{\n  "schemaVersion": "1.0",\n  "project": {\n    "name": "My App",\n    "description": "App description"\n  }\n}'}
+                                      value={state.rawInput || ''}
+                                      onChange={(e) => handleRawJsonChange(project.id, e.target.value)}
+                                      rows={12}
+                                    />
+                                  </div>
+
+                                  <div className="file-input-wrapper">
+                                    <span className="file-input-hint">Already have one?</span>
+                                    <label className="file-upload-btn">
+                                      Choose <code>.llmhandoff.json</code> File
+                                      <input
+                                        type="file"
+                                        accept=".json,application/json"
+                                        onChange={(e) => handleFileUpload(project.id, e.target.files[0])}
+                                      />
+                                    </label>
+                                  </div>
+
+                                  <div className="save-action-row">
+                                    <button
+                                      className="btn-save-manifest"
+                                      onClick={() => handleSaveManifest(project.id)}
+                                      disabled={!state.isJsonValid || state.saving}
+                                    >
+                                      {state.saving ? 'Saving Manifest...' : 'Save & Activate Manifest'}
+                                    </button>
+                                    {state.saveSuccess && <span className="save-success-msg">Manifest saved and activated!</span>}
+                                  </div>
+                                </section>
+
+                                {/* Step 3: Active Manifest Overview & handoff */}
+                                <section className={slideClass(2)} hidden={activeStep !== 2}>
+                                  <div className="step-heading manifest-header">
+                                    <div>
+                                      <span className="step-eyebrow">Step 3 of {HANDOFF_STEPS.length}</span>
+                                      <h4>Active Manifest Overview</h4>
+                                    </div>
+                                    {manifest && (
+                                      <button
+                                        className="btn-copy-package"
+                                        onClick={() => handleCopyHandoffPackage(project.id)}
+                                      >
+                                        {state.copySuccess ? 'Copied Prompt to Clipboard!' : 'Copy Handoff Package'}
+                                      </button>
+                                    )}
+                                  </div>
+
+                                  {state.loadingManifest ? (
+                                    <p className="helper-text">Loading manifest data...</p>
+                                  ) : parsed ? (
+                                    <div className="dashboard-grid">
+                                      {/* Environment info */}
+                                      {parsed.environment && (
+                                        <div className="dashboard-card">
+                                          <h5>Environment & Tech Stack</h5>
+                                          <div className="badge-group">
+                                            {parsed.environment.language && <span className="chip chip-blue">{parsed.environment.language}</span>}
+                                            {parsed.environment.framework && <span className="chip chip-purple">{parsed.environment.framework}</span>}
+                                            {parsed.environment.database && <span className="chip chip-green">{parsed.environment.database}</span>}
+                                            {parsed.environment.buildTool && <span className="chip chip-orange">{parsed.environment.buildTool}</span>}
+                                            {parsed.environment.runtime && <span className="chip chip-teal">{parsed.environment.runtime}</span>}
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {/* Commands */}
+                                      {parsed.commands && Object.keys(parsed.commands).length > 0 && (
+                                        <div className="dashboard-card">
+                                          <h5>Standard Commands</h5>
+                                          <div className="commands-list">
+                                            {Object.entries(parsed.commands).map(([k, v]) => (
+                                              <div key={k} className="command-row">
+                                                <span className="cmd-name">{k}:</span> <code>{v}</code>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {/* Context Details */}
+                                      {parsed.context && (
+                                        <div className="dashboard-card full-width">
+                                          <h5>Context & Directives</h5>
+                                          {parsed.context.architecture && (
+                                            <p className="architecture-text">{parsed.context.architecture}</p>
+                                          )}
+                                          {parsed.context.decisions && parsed.context.decisions.length > 0 && (
+                                            <div className="checklist-block">
+                                              <strong>Key Decisions:</strong>
+                                              <ul>
+                                                {parsed.context.decisions.map((d, i) => (
+                                                  <li key={i}>{d}</li>
+                                                ))}
+                                              </ul>
+                                            </div>
+                                          )}
+                                          {parsed.context.rules && parsed.context.rules.length > 0 && (
+                                            <div className="checklist-block">
+                                              <strong>Development Rules:</strong>
+                                              <ul>
+                                                {parsed.context.rules.map((r, i) => (
+                                                  <li key={i}>{r}</li>
+                                                ))}
+                                              </ul>
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <div className="empty-manifest-box">
+                                      <p>No manifest uploaded yet for this project.</p>
+                                      <p className="sub">Generate, paste, or upload a <code>.llmhandoff.json</code> in Step 2 to enable deterministic prompt handoffs.</p>
+                                    </div>
+                                  )}
+                                </section>
                               </div>
 
-                              <div className="json-editor-container">
-                                <div className="editor-top-bar">
-                                  <span className={`validation-badge ${state.isJsonValid ? 'valid' : 'invalid'}`}>
-                                    {state.isJsonValid ? 'Valid JSON' : 'Invalid / Empty JSON'}
-                                  </span>
-                                </div>
-                                <textarea
-                                  className={`json-textarea ${state.isJsonValid ? 'json-valid' : state.rawInput ? 'json-invalid' : ''}`}
-                                  placeholder='{\n  "schemaVersion": "1.0",\n  "project": {\n    "name": "My App",\n    "description": "App description"\n  }\n}'
-                                  value={state.rawInput || ''}
-                                  onChange={(e) => handleRawJsonChange(project.id, e.target.value)}
-                                  rows={12}
-                                />
-                              </div>
-
-                              <div className="save-action-row">
+                              <div className="carousel-nav">
                                 <button
-                                  className="btn-save-manifest"
-                                  onClick={() => handleSaveManifest(project.id)}
-                                  disabled={!state.isJsonValid || state.saving}
+                                  type="button"
+                                  className="btn-carousel"
+                                  disabled={activeStep === 0}
+                                  onClick={() => goToStep(project.id, activeStep - 1)}
                                 >
-                                  {state.saving ? 'Saving Manifest...' : 'Save & Activate Manifest'}
+                                  ← Back
                                 </button>
-                                {state.saveSuccess && <span className="save-success-msg">Manifest saved and activated!</span>}
+                                <span className="carousel-dots" aria-hidden="true">
+                                  {HANDOFF_STEPS.map((step, index) => (
+                                    <span key={step.title} className={`carousel-dot ${index === activeStep ? 'active' : ''}`} />
+                                  ))}
+                                </span>
+                                <button
+                                  type="button"
+                                  className="btn-carousel btn-carousel-next"
+                                  disabled={activeStep === HANDOFF_STEPS.length - 1}
+                                  onClick={() => goToStep(project.id, activeStep + 1)}
+                                >
+                                  Next →
+                                </button>
                               </div>
                             </div>
                           </div>
