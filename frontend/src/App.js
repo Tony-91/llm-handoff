@@ -7,7 +7,7 @@ const API_BASE = '/api';
 const HANDOFF_STEPS = [
   { title: 'GitHub Integration & Sync' },
   { title: 'Auto-Generate Manifest' },
-  { title: 'Review & Hand Off' }
+  { title: 'Review & Handoff' }
 ];
 
 function App() {
@@ -17,6 +17,21 @@ function App() {
     return saved ? JSON.parse(saved) : null;
   });
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
+  const [theme, setTheme] = useState(() => {
+    const saved = localStorage.getItem('theme');
+    if (saved) return saved;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+    const favicon = document.querySelector('link[rel="icon"]');
+    if (favicon) favicon.href = `/branding/icon-${theme}mode.png`;
+  }, [theme]);
+
+  const toggleTheme = () => setTheme(t => (t === 'dark' ? 'light' : 'dark'));
 
   const [projects, setProjects] = useState([]);
   const [formData, setFormData] = useState({ name: '', description: '' });
@@ -233,6 +248,10 @@ function App() {
   };
 
   const goToStep = (projectId, step) => {
+    setTimeout(() => {
+      const el = document.getElementById(`steps-carousel-${projectId}`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 0);
     setProjectState((prev) => {
       const current = prev[projectId]?.activeStep || 0;
       const next = Math.max(0, Math.min(HANDOFF_STEPS.length - 1, step));
@@ -545,10 +564,23 @@ function App() {
         {/* Navigation & Auth Bar */}
         <nav className="navbar">
           <div className="nav-brand">
-            <span>Project Handoff</span>
-            <span className="nav-brand-badge">v1.0-MVP</span>
+            <img
+              className="nav-brand-logo"
+              src={`/branding/logo-${theme}mode.png`}
+              alt="LLM Handoff logo"
+            />
+            <span className="nav-brand-badge">v1.0</span>
           </div>
           <div className="nav-auth-controls">
+            <button
+              type="button"
+              className="theme-toggle-btn"
+              onClick={toggleTheme}
+              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {theme === 'dark' ? '☀️' : '🌙'}
+            </button>
             {token && user ? (
               <div className="user-badge">
                 <span className="user-avatar">👤</span>
@@ -581,9 +613,14 @@ function App() {
         {!token ? (
           /* Unauthenticated Lockout Landing Screen */
           <div className="lockout-banner">
+            <img
+              className="lockout-logo"
+              src={`/branding/logo-${theme}mode.png`}
+              alt="LLM Handoff logo"
+            />
             <h2>Sign In to Access Your Projects</h2>
             <p>
-              Project Handoff securely isolates project state, architectural decisions, and LLM manifests per developer account.
+              LLM Handoff securely isolates project state, architectural decisions, and LLM manifests per developer account.
             </p>
             <button
               type="button"
@@ -659,7 +696,7 @@ function App() {
                           <div className="project-card-body">
                             {state.errorMessage && <div className="card-error">{state.errorMessage}</div>}
 
-                            <div className="steps-carousel">
+                            <div className="steps-carousel" id={`steps-carousel-${project.id}`}>
                               <ol className="carousel-stepper">
                                 {HANDOFF_STEPS.map((step, index) => {
                                   const isDone = index === 0 ? Boolean(project.repoIdentifier) : index === 1 ? Boolean(manifest) : false;
@@ -683,9 +720,12 @@ function App() {
                                 {/* Step 1: GitHub Integration & Sync */}
                                 <section className={slideClass(0)} hidden={activeStep !== 0}>
                                   <div className="step-heading">
-                                    <span className="step-eyebrow">Step 1 of {HANDOFF_STEPS.length}</span>
-                                    <h4>GitHub Integration & Sync</h4>
-                                    <p className="helper-text">Connect the GitHub repository for this project and save it. If the repo already contains a <code>.llmhandoff.json</code>, use Sync to pull it in.</p>
+                                    <img className="step-brand-icon" src={`/branding/icon-${theme}mode.png`} alt="" aria-hidden="true" />
+                                    <div>
+                                      <span className="step-eyebrow">Step 1 of {HANDOFF_STEPS.length}</span>
+                                      <h4>GitHub Integration & Sync</h4>
+                                      <p className="helper-text">Connect the GitHub repository for this project and save it. If the repo already contains a <code>.llmhandoff.json</code>, use Sync to pull it in.</p>
+                                    </div>
                                   </div>
                                   <div className="git-config-row">
                                     <div className="git-input-group">
@@ -752,9 +792,12 @@ function App() {
                                 {/* Step 2: Auto-Generate Manifest & JSON editor */}
                                 <section className={slideClass(1)} hidden={activeStep !== 1}>
                                   <div className="step-heading">
-                                    <span className="step-eyebrow">Step 2 of {HANDOFF_STEPS.length}</span>
-                                    <h4>Auto-Generate Manifest</h4>
-                                    <p className="helper-text">Inspect the saved repository to draft a <code>.llmhandoff.json</code>, review or edit it below, then save to activate it.</p>
+                                    <img className="step-brand-icon" src={`/branding/icon-${theme}mode.png`} alt="" aria-hidden="true" />
+                                    <div>
+                                      <span className="step-eyebrow">Step 2 of {HANDOFF_STEPS.length}</span>
+                                      <h4>Auto-Generate Manifest</h4>
+                                      <p className="helper-text">Inspect the saved repository to draft a <code>.llmhandoff.json</code>, review or edit it below, then save to activate it.</p>
+                                    </div>
                                   </div>
                                   <div className="step-actions">
                                     <button
@@ -840,9 +883,12 @@ function App() {
                                 {/* Step 3: Active Manifest Overview & handoff */}
                                 <section className={slideClass(2)} hidden={activeStep !== 2}>
                                   <div className="step-heading manifest-header">
-                                    <div>
-                                      <span className="step-eyebrow">Step 3 of {HANDOFF_STEPS.length}</span>
-                                      <h4>Active Manifest Overview</h4>
+                                    <div className="step-heading-title">
+                                      <img className="step-brand-icon" src={`/branding/icon-${theme}mode.png`} alt="" aria-hidden="true" />
+                                      <div>
+                                        <span className="step-eyebrow">Step 3 of {HANDOFF_STEPS.length}</span>
+                                        <h4>Active Manifest Overview</h4>
+                                      </div>
                                     </div>
                                     {manifest && (
                                       <button
